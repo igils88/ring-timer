@@ -8,99 +8,128 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Ring Timer">
-<meta name="theme-color" content="#0c0a09">
+<meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <style>
-html{color-scheme:dark;background:#0c0a09;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{color-scheme:dark;background:#000;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0}img{max-width:100%}[hidden]{display:none!important}
 </style>
 <title>Ring Timer</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600;700&display=swap">
 <style>
+  /* Paleta del sistema de iOS en modo oscuro. La app es oscura a propósito:
+     se usa en un gimnasio, con la pantalla encendida todo el entrenamiento. */
   :root{
     color-scheme:dark;
-    --bg:#0c0a09; --panel:#191614; --line:#2b2522; --txt:#f6f2ef; --dim:#a2968f;
-    --work:#a8161f;   /* esquina roja */
-    --rest:#14477d;   /* esquina azul */
-    --prep:#8c5a14;   /* esquina neutral */
-    --accent:#d9481f;
-    --display:"Anton","Haettenschweiler","Arial Narrow",Impact,sans-serif;
-    --ui:"Barlow",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --bg:#000000;          /* systemGroupedBackground oscuro */
+    --group:#1C1C1E;       /* secondarySystemGroupedBackground */
+    --fill:#2C2C2E;        /* tertiarySystemFill */
+    --sep:#38383A;         /* separator */
+    --label:#FFFFFF;
+    --label2:rgba(235,235,245,.60);
+    --label3:rgba(235,235,245,.30);
+    --accent:#FF453A;      /* systemRed, modo oscuro */
+    --work:#B0141C;        /* esquina roja */
+    --rest:#0B4A87;        /* esquina azul */
+    --prep:#8A5A12;        /* esquina neutral */
+    --ok:#30D158;          /* systemGreen */
+    --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --round:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{
-    margin:0;background:var(--bg);color:var(--txt);font-family:var(--ui);
-    -webkit-user-select:none;user-select:none;overscroll-behavior:none;
+    margin:0;background:var(--bg);color:var(--label);font-family:var(--ui);
+    font-size:17px;line-height:1.35;-webkit-user-select:none;user-select:none;
+    overscroll-behavior:none;-webkit-font-smoothing:antialiased;
   }
-  button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer}
-  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer;font-size:17px}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
   /* ---------- pantalla de ajustes ---------- */
-  #setup{max-width:560px;margin:0 auto;padding:22px 18px 40px}
-  .brand{display:flex;align-items:center;gap:10px;margin:6px 0 22px}
-  .brand svg{width:30px;height:30px;flex:0 0 auto}
-  .brand h1{font-family:var(--display);font-size:26px;letter-spacing:.12em;margin:0;font-weight:400;line-height:1}
-  .brand small{display:block;font-size:11px;letter-spacing:.14em;color:var(--dim);font-weight:600;margin-top:4px}
+  #setup{max-width:520px;margin:0 auto;padding:8px 16px 44px}
 
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:16px}
-  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
-  .row:last-child{border-bottom:0}
-  .lbl{font-size:15px;font-weight:600}
-  .lbl em{display:block;font-style:normal;font-size:12px;color:var(--dim);font-weight:500;margin-top:2px;line-height:1.35}
-  .stepper{display:flex;align-items:center;gap:2px;background:#0d1015;border:1px solid var(--line);border-radius:12px;flex:0 0 auto}
-  .stepper button{width:44px;height:44px;font-size:22px;font-weight:600;color:var(--accent);border-radius:12px}
-  .stepper button:active{background:#1d222a}
-  .stepper .val{min-width:74px;text-align:center;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+  .nav{padding:12px 4px 18px}
+  .nav h1{font-size:34px;line-height:1.05;font-weight:700;letter-spacing:.37px;margin:0}
+  .nav p{margin:4px 0 0;font-size:15px;color:var(--label2)}
 
-  .sw{width:52px;height:32px;border-radius:999px;background:#343a45;position:relative;transition:background .18s;flex:0 0 auto}
-  .sw::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;transition:transform .18s}
-  .sw[aria-pressed="true"]{background:var(--accent)}
+  /* Botón principal, estilo "prominent" de iOS */
+  #go{display:block;width:100%;height:56px;border-radius:14px;background:var(--accent);
+      color:#fff;font-size:20px;font-weight:600;letter-spacing:.2px}
+  #go:active{background:#D9342B}
+
+  /* Resumen: cifra grande redondeada, como los widgets de Actividad */
+  .summary{text-align:center;padding:26px 8px 30px}
+  #tot{font-family:var(--round);font-size:44px;font-weight:600;line-height:1;letter-spacing:.3px;
+       font-variant-numeric:tabular-nums}
+  #totsub{font-size:15px;color:var(--label2);margin-top:8px}
+
+  /* Listas agrupadas con sangría, como Ajustes */
+  .sect{margin-bottom:30px}
+  .sect > h2{margin:0 0 7px;padding:0 16px;font-size:13px;font-weight:400;
+             letter-spacing:.5px;text-transform:uppercase;color:var(--label2)}
+  .sect > p{margin:7px 0 0;padding:0 16px;font-size:13px;line-height:1.4;color:var(--label2)}
+  .sect > p a,.sect > p b{color:var(--label2);font-weight:600}
+  .group{background:var(--group);border-radius:10px;overflow:hidden}
+  .row{display:flex;align-items:center;gap:12px;min-height:50px;padding:7px 16px;position:relative}
+  /* Separador con la sangría de iOS: empieza donde empieza el texto */
+  .row + .row::before{content:"";position:absolute;left:16px;right:0;top:0;height:1px;
+                      background:var(--sep);transform:scaleY(.5)}
+  .row .name{flex:1;min-width:0}
+  .row .val{font-size:17px;color:var(--label2);font-variant-numeric:tabular-nums;
+            min-width:52px;text-align:right}
+
+  /* Stepper de iOS: dos mitades sobre relleno terciario */
+  .stepper{display:flex;background:var(--fill);border-radius:8px;overflow:hidden;flex:0 0 auto}
+  .stepper button{width:48px;height:32px;display:flex;align-items:center;justify-content:center;
+                  font-size:20px;font-weight:500;line-height:1}
+  .stepper button:first-child{box-shadow:1px 0 0 rgba(255,255,255,.12)}
+  .stepper button:active{background:rgba(255,255,255,.12)}
+  .stepper button[disabled]{color:var(--label3)}
+
+  /* Interruptor de iOS */
+  .sw{width:51px;height:31px;border-radius:999px;background:#39393D;position:relative;
+      transition:background .2s;flex:0 0 auto}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;
+             background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.35);transition:transform .2s}
+  .sw[aria-pressed="true"]{background:var(--ok)}
   .sw[aria-pressed="true"]::after{transform:translateX(20px)}
 
-  #go{display:block;width:100%;padding:20px;border-radius:16px;background:var(--work);
-      font-family:var(--display);font-size:30px;font-weight:400;letter-spacing:.14em}
-  #go:active{filter:brightness(.85)}
-  .summary{text-align:center;padding:18px 8px 20px;margin-bottom:18px}
-  #tot{font-family:var(--display);font-size:30px;line-height:1;text-transform:uppercase;
-       letter-spacing:.04em;color:var(--txt)}
-  #totsub{font-size:12.5px;color:var(--dim);font-weight:500;margin-top:8px;line-height:1.5}
-  .summary hr{border:0;border-top:1px solid var(--line);width:36px;margin:14px auto 0}
-  .hint{color:var(--dim);font-size:12px;line-height:1.5;margin:18px 2px 0}
-  .hint b{color:#e7ddd7}
-  #offline{display:flex;align-items:center;gap:8px;margin:14px 2px 0;font-size:12px;
-           font-weight:600;color:var(--dim);letter-spacing:.01em}
-  #offline span{width:8px;height:8px;border-radius:50%;background:#6b625d;flex:0 0 auto}
-  #offline.ok{color:#5fb27a} #offline.ok span{background:#5fb27a}
-  #offline.no{color:#a2968f}
+  #offline{display:flex;align-items:center;gap:7px;padding:0 16px;margin:-16px 0 30px;
+           font-size:13px;color:var(--label2)}
+  #offline span{width:7px;height:7px;border-radius:50%;background:var(--label3);flex:0 0 auto}
+  #offline.ok span{background:var(--ok)}
 
   /* ---------- pantalla del temporizador ---------- */
-  #run{position:fixed;inset:0;display:none;flex-direction:column;background:var(--prep);transition:background .35s}
+  #run{position:fixed;inset:0;display:none;flex-direction:column;background:var(--prep);
+       transition:background .35s}
   #run.on{display:flex}
   #run.work{background:var(--work)} #run.rest{background:var(--rest)} #run.prep{background:var(--prep)}
-  #run.done{background:#1f2937}
-  #bar{height:6px;background:rgba(0,0,0,.28);flex:0 0 auto}
-  #bar i{display:block;height:100%;background:rgba(255,255,255,.9);width:0%}
-  #top{flex:0 0 auto;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 0;text-align:center}
-  #phase{font-family:var(--display);font-size:min(9vw,34px);font-weight:400;letter-spacing:.22em}
-  #rnd{font-size:min(4.4vw,16px);font-weight:600;opacity:.82;margin-top:6px;letter-spacing:.14em}
+  #run.done{background:#1C1C1E}
+
+  #top{flex:0 0 auto;padding:calc(18px + env(safe-area-inset-top,0px)) 20px 0;text-align:center}
+  #phase{font-size:15px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;opacity:.75}
+  #rnd{font-size:22px;font-weight:600;margin-top:5px;letter-spacing:.2px}
+
   #mid{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden}
-  #clock{font-family:var(--display);font-size:min(36vw,42vh);font-weight:400;line-height:.86;
-         white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:.01em}
-  #bottom{position:relative;z-index:2;flex:0 0 auto;padding:0 16px calc(16px + env(safe-area-inset-bottom,0px));text-align:center}
-  #pips{display:flex;gap:4px;margin-bottom:12px}
-  #pips i{flex:1;height:5px;border-radius:2px;background:rgba(255,255,255,.22)}
-  #pips i.done{background:rgba(255,255,255,.85)}
-  #pips i.now{background:#fff;height:9px;margin-top:-2px}
-  #left{font-size:min(3.8vw,14px);opacity:.75;margin-bottom:12px;font-weight:600;letter-spacing:.04em}
+  #clock{font-family:var(--round);font-weight:600;font-size:min(40vw,44vh);line-height:.95;
+         white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+
+  #bottom{position:relative;z-index:2;flex:0 0 auto;
+          padding:0 20px calc(20px + env(safe-area-inset-bottom,0px))}
+  #pips{display:flex;gap:3px;margin-bottom:10px}
+  #pips i{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.28)}
+  #pips i.done{background:rgba(255,255,255,.9)}
+  #pips i.now{background:#fff;height:7px;margin-top:-1.5px}
+  #left{font-size:13px;opacity:.7;margin-bottom:16px;text-align:center;font-variant-numeric:tabular-nums}
   .ctrls{display:flex;gap:10px}
-  .ctrls button{flex:1;padding:16px 8px;border-radius:14px;background:rgba(0,0,0,.28);
-                font-size:14px;font-weight:700;letter-spacing:.12em}
-  .ctrls button:active{background:rgba(0,0,0,.5)}
+  .ctrls button{flex:1;height:50px;border-radius:12px;background:rgba(255,255,255,.18);
+                font-size:16px;font-weight:600;letter-spacing:.2px}
+  .ctrls button:active{background:rgba(255,255,255,.3)}
   #paused{position:absolute;inset:0;z-index:1;display:none;align-items:center;justify-content:center;
-          background:rgba(0,0,0,.6);font-family:var(--display);font-size:min(13vw,56px);letter-spacing:.2em}
+          background:rgba(0,0,0,.55);font-size:28px;font-weight:600;letter-spacing:1.4px;
+          text-transform:uppercase}
   #run.paused #paused{display:flex}
   video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 </style>
@@ -109,51 +138,54 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
 </head>
 <body>
 <div id="setup">
-  <div class="brand">
-    <svg viewBox="0 0 24 24" fill="none" stroke="#d9481f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M6 4h9a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4H6z"/><path d="M6 15v3a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-3"/><path d="M6 4v11"/><path d="M3 7h3"/>
-    </svg>
-    <div><h1>RING TIMER</h1><small>ENTRENAMIENTO DE BOXEO</small></div>
+  <div class="nav">
+    <h1>Ring Timer</h1>
+    <p>Entrenamiento de boxeo</p>
   </div>
 
-  <button id="go">EMPEZAR</button>
+  <button id="go">Empezar</button>
 
   <div class="summary">
     <div id="tot">—</div>
     <div id="totsub">—</div>
-    <hr>
   </div>
 
-  <div class="card" id="cfg"></div>
+  <div id="cfg"></div>
 
   <p id="offline"><span></span><em style="font-style:normal">Preparando el modo sin conexión…</em></p>
 
-  <p class="hint">
-    <b>Añádela a tu pantalla de inicio:</b> en Safari, botón Compartir → «Añadir a pantalla de inicio».
-    Se abrirá a pantalla completa, sin barra del navegador.<br><br>
-    <b>Con música:</b> pon Spotify primero y luego arranca el temporizador. La campana suena por encima y baja
-    la música un segundo en cada aviso.<br><br>
-    <b>La pantalla no se apaga sola</b> mientras corre el temporizador. Si bloqueas tú el móvil con el botón,
-    iOS corta el sonido: al desbloquear, el reloj sigue en el segundo correcto.<br><br>
-    <b>Sin cobertura:</b> ábrela una vez con conexión y queda guardada en el móvil. A partir de ahí arranca
-    aunque el gimnasio no tenga señal.
-  </p>
+  <div class="sect">
+    <h2>Cómo usarla</h2>
+    <div class="group">
+      <div class="row"><div class="name" style="font-size:15px;line-height:1.45">
+        <b>Instálala en la pantalla de inicio.</b> En Safari, botón Compartir →
+        «Añadir a pantalla de inicio». Se abre a pantalla completa, sin barra del navegador.
+      </div></div>
+      <div class="row"><div class="name" style="font-size:15px;line-height:1.45">
+        <b>Con música.</b> Pon Spotify primero y arranca el temporizador después.
+        La campana suena por encima y baja la música un segundo en cada aviso.
+      </div></div>
+      <div class="row"><div class="name" style="font-size:15px;line-height:1.45">
+        <b>La pantalla no se apaga sola.</b> Si bloqueas tú el móvil, iOS corta el sonido;
+        al desbloquear, el reloj sigue en el segundo correcto.
+      </div></div>
+    </div>
+  </div>
 </div>
 
 <div id="run">
-  <div id="bar"><i id="barf"></i></div>
-  <div id="top"><div id="phase">PREPARA</div><div id="rnd"></div></div>
+  <div id="top"><div id="phase">Prepara</div><div id="rnd"></div></div>
   <div id="mid"><div id="clock">0:00</div></div>
   <div id="bottom">
     <div id="pips"></div>
     <div id="left"></div>
     <div class="ctrls">
-      <button id="pause">PAUSA</button>
-      <button id="skip">SALTAR</button>
-      <button id="stop">SALIR</button>
+      <button id="pause">Pausa</button>
+      <button id="skip">Saltar</button>
+      <button id="stop">Salir</button>
     </div>
   </div>
-  <div id="paused">EN PAUSA</div>
+  <div id="paused">En pausa</div>
   <video id="nosleep" playsinline muted loop
     src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMsbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAlZ0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAEAAAABAAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAHObWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABeW1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAATlzdGJsAAAAuXN0c2QAAAAAAAAAAQAAAKlhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAEAAQABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAAL2F2Y0MBQsAe/+EAF2dCwB7ZBCbARAAAAwAEAAADAAg8WLkgAQAFaMuDyyAAAAAQcGFzcAAAAAEAAAABAAAAFGJ0cnQAAAAAAAAKcAAACnAAAAAYc3R0cwAAAAAAAAABAAAAAgAAQAAAAAAUc3RzcwAAAAAAAAABAAAAAQAAABxzdHNjAAAAAAAAAAEAAAABAAAAAgAAAAEAAAAcc3RzegAAAAAAAAAAAAAAAgAAApIAAAAKAAAAFHN0Y28AAAAAAAAAAQAAA1wAAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAACpG1kYXQAAAJwBgX//2zcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MCByZWY9MyBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgxOjB4MTExIG1lPWhleCBzdWJtZT03IHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTEgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0xIDh4OGRjdD0wIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PS0yIHRocmVhZHM9MiBsb29rYWhlYWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAgY29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTAgd2VpZ2h0cD0wIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAAGmWIhAW///8PRQABT38nJyddddddddddddeAAAAABkGaOAr4Rg=="></video>
 </div>
@@ -232,6 +264,7 @@ function buildSounds(){
 function mk(uri){
   var a = new Audio(); a.src = uri; a.preload = 'auto'; a.volume = 1; return a;
 }
+
 /* Duración aproximada de cada aviso, para saber cuánto atenuar la música */
 var DUR = { start:2.0, end:2.5, warn:.45, tick:.25, go:.45 };
 var duckT = null;
@@ -272,16 +305,27 @@ try{
 }catch(e){}
 function save(){ try{ localStorage.setItem('ringtimer', JSON.stringify(cfg)); }catch(e){} }
 
-var FIELDS = [
-  {k:'rounds', label:'Rondas',       sub:'Número de asaltos',                 min:1,  max:30,  step:1,  fmt:function(v){return v;}},
-  {k:'work',   label:'Asalto',       sub:'Duración de cada round',            min:15, max:900, step:15, fmt:ms},
-  {k:'rest',   label:'Descanso',     sub:'Entre asalto y asalto',             min:0,  max:600, step:15, fmt:ms},
-  {k:'prep',   label:'Preparación',  sub:'Tiempo antes de la primera campana',min:0,  max:120, step:5,  fmt:ms}
-];
-var TOGGLES = [
-  {k:'warn',  label:'Aviso a falta de 10 s',      sub:'Dos golpes de madera al final del asalto'},
-  {k:'vibra', label:'Vibración',              sub:'Vibra además de sonar'},
-  {k:'duck',  label:'Atenuar la música al sonar', sub:'Baja un instante el volumen de Spotify en cada aviso, sin cortarlo'}
+var SECTIONS = [
+  {
+    title: 'Entrenamiento',
+    foot: 'El total de arriba se recalcula al cambiar cualquier valor.',
+    fields: [
+      {k:'rounds', label:'Rondas',      min:1,  max:30,  step:1,  fmt:function(v){ return v; }},
+      {k:'work',   label:'Asalto',      min:15, max:900, step:15, fmt:ms},
+      {k:'rest',   label:'Descanso',    min:0,  max:600, step:15, fmt:ms},
+      {k:'prep',   label:'Preparación', min:0,  max:120, step:5,  fmt:ms}
+    ]
+  },
+  {
+    title: 'Avisos',
+    foot: 'La atenuación baja el volumen de la música un instante en cada campana, sin cortarla. ' +
+          'Necesita iOS 16.4 o posterior; en versiones anteriores la campana suena igual, pero sin bajar la música.',
+    toggles: [
+      {k:'warn',  label:'Aviso a falta de 10 s'},
+      {k:'vibra', label:'Vibración'},
+      {k:'duck',  label:'Atenuar la música'}
+    ]
+  }
 ];
 
 function ms(s){ var m = Math.floor(s/60), r = s%60; return m + ':' + (r<10?'0':'') + r; }
@@ -292,40 +336,76 @@ function hms(s){
 }
 
 var $ = function(id){ return document.getElementById(id); };
+function el(tag, cls, txt){
+  var n = document.createElement(tag);
+  if(cls) n.className = cls;
+  if(txt != null) n.textContent = txt;
+  return n;
+}
 
 function renderCfg(){
   var box = $('cfg'); box.innerHTML = '';
-  FIELDS.forEach(function(f){
-    var row = document.createElement('div'); row.className = 'row';
-    row.innerHTML = '<span class="lbl">' + f.label + '<em>' + f.sub + '</em></span>';
-    var st = document.createElement('div'); st.className = 'stepper';
-    var b1 = document.createElement('button'); b1.textContent = '−';
-    var val = document.createElement('span'); val.className = 'val';
-    var b2 = document.createElement('button'); b2.textContent = '+';
-    function upd(){ val.textContent = f.fmt(cfg[f.k]); }
-    function step(d){
-      var v = cfg[f.k] + d*f.step;
-      if(f.k === 'work' && cfg[f.k] < 60 && d < 0) v = cfg[f.k] - 5;
-      if(v < f.min) v = f.min; if(v > f.max) v = f.max;
-      cfg[f.k] = v; upd(); total(); save();
-    }
-    b1.onclick = function(){ step(-1); }; b2.onclick = function(){ step(1); };
-    upd(); st.appendChild(b1); st.appendChild(val); st.appendChild(b2);
-    row.appendChild(st); box.appendChild(row);
+
+  SECTIONS.forEach(function(sec){
+    var wrap = el('div', 'sect');
+    wrap.appendChild(el('h2', null, sec.title));
+    var group = el('div', 'group');
+
+    (sec.fields || []).forEach(function(f){
+      var row = el('div', 'row');
+      row.appendChild(el('div', 'name', f.label));
+      var val = el('div', 'val');
+      var st = el('div', 'stepper');
+      var minus = el('button', null, '−');
+      var plus  = el('button', null, '+');
+      minus.setAttribute('aria-label', 'Reducir ' + f.label);
+      plus.setAttribute('aria-label', 'Aumentar ' + f.label);
+
+      function upd(){
+        val.textContent = f.fmt(cfg[f.k]);
+        minus.disabled = cfg[f.k] <= f.min;
+        plus.disabled  = cfg[f.k] >= f.max;
+      }
+      function step(d){
+        var v = cfg[f.k] + d*f.step;
+        if(f.k === 'work' && cfg[f.k] < 60 && d < 0) v = cfg[f.k] - 5;
+        if(v < f.min) v = f.min;
+        if(v > f.max) v = f.max;
+        cfg[f.k] = v; upd(); total(); save();
+      }
+      minus.onclick = function(){ step(-1); };
+      plus.onclick  = function(){ step(1); };
+      upd();
+
+      st.appendChild(minus); st.appendChild(plus);
+      row.appendChild(val); row.appendChild(st);
+      group.appendChild(row);
+    });
+
+    (sec.toggles || []).forEach(function(t){
+      var row = el('div', 'row');
+      row.appendChild(el('div', 'name', t.label));
+      var sw = el('button', 'sw');
+      sw.setAttribute('role', 'switch');
+      sw.setAttribute('aria-label', t.label);
+      sw.setAttribute('aria-pressed', cfg[t.k] ? 'true' : 'false');
+      sw.onclick = function(){
+        cfg[t.k] = !cfg[t.k];
+        sw.setAttribute('aria-pressed', cfg[t.k] ? 'true' : 'false');
+        save();
+      };
+      row.appendChild(sw);
+      group.appendChild(row);
+    });
+
+    wrap.appendChild(group);
+    if(sec.foot) wrap.appendChild(el('p', null, sec.foot));
+    box.appendChild(wrap);
   });
-  TOGGLES.forEach(function(t){
-    var row = document.createElement('div'); row.className = 'row';
-    row.innerHTML = '<span class="lbl">' + t.label + '<em>' + t.sub + '</em></span>';
-    var sw = document.createElement('button'); sw.className = 'sw';
-    sw.setAttribute('aria-pressed', cfg[t.k] ? 'true' : 'false');
-    sw.onclick = function(){
-      cfg[t.k] = !cfg[t.k];
-      sw.setAttribute('aria-pressed', cfg[t.k] ? 'true' : 'false'); save();
-    };
-    row.appendChild(sw); box.appendChild(row);
-  });
+
   total();
 }
+
 function total(){
   var t = cfg.prep + cfg.rounds*cfg.work + Math.max(0, cfg.rounds-1)*cfg.rest;
   $('tot').textContent = hms(t);
@@ -385,16 +465,15 @@ function pips(){
   for(var i=0;i<cfg.rounds;i++) box.appendChild(document.createElement('i'));
 }
 function markPips(cur, doneAll){
-  var el = $('pips').children;
-  for(var i=0;i<el.length;i++){
-    el[i].className = doneAll ? 'done' : (i+1 < cur ? 'done' : (i+1 === cur ? 'now' : ''));
+  var e = $('pips').children;
+  for(var i=0;i<e.length;i++){
+    e[i].className = doneAll ? 'done' : (i+1 < cur ? 'done' : (i+1 === cur ? 'now' : ''));
   }
 }
 
 function start(){
   prime(); build(); pips();
   idx = 0; t0 = Date.now(); running = true; paused = false;
-  seq[0].played = true;
   if(seq[0].type === 'work') play('start');
   $('run').classList.add('on');
   fitClock();
@@ -407,7 +486,8 @@ function stop(){
   running = false; if(timer) clearInterval(timer); timer = null;
   awake(false);
   $('run').classList.remove('on','paused');
-  try{ document.getElementById('setup').scrollIntoView(); }catch(e){}
+  $('pause').textContent = 'Pausa';
+  try{ $('setup').scrollIntoView(); }catch(e){}
 }
 function togglePause(){
   if(!running) return;
@@ -415,12 +495,12 @@ function togglePause(){
   if(paused){ pauseAt = Date.now(); awake(false); }
   else{ t0 += Date.now() - pauseAt; awake(true); }
   $('run').classList.toggle('paused', paused);
-  $('pause').textContent = paused ? 'SEGUIR' : 'PAUSA';
+  $('pause').textContent = paused ? 'Seguir' : 'Pausa';
   tick();
 }
 function skip(){
   if(!running) return;
-  t0 -= seq[idx].dur*1000; // fuerza el fin del tramo actual
+  t0 -= seq[idx].dur*1000;              // fuerza el fin del tramo actual
   if(paused) togglePause(); else tick();
 }
 
@@ -433,69 +513,60 @@ function enter(i){
 function tick(){
   if(!running) return;
   var now = paused ? pauseAt : Date.now();
-  var el = (now - t0)/1000;
+  var e = (now - t0)/1000;
 
-  while(idx < seq.length && el >= seq[idx].dur){
+  while(idx < seq.length && e >= seq[idx].dur){
     var prev = seq[idx];
-    el -= prev.dur; t0 += prev.dur*1000;
+    e -= prev.dur; t0 += prev.dur*1000;
     idx++;
     if(idx >= seq.length){ finish(prev); return; }
     enter(idx);
   }
 
-  var ph = seq[idx], rem = ph.dur - el;
+  var ph = seq[idx], rem = ph.dur - e;
 
-  // avisos dentro del tramo
-  if(ph.type === 'work' && cfg.warn && rem <= 10 && !ph.warned && ph.dur > 12){ ph.warned = true; play('warn'); }
-  if(ph.type === 'prep'){
+  if(ph.type === 'work' && cfg.warn && rem <= 10 && !ph.warned && ph.dur > 12){
+    ph.warned = true; play('warn');
+  }
+  if(ph.type === 'prep' || ph.type === 'rest'){
     var s = Math.ceil(rem);
     if(s <= 3 && ph.lastTick !== s){ ph.lastTick = s; play('tick'); }
-  }
-  if(ph.type === 'rest'){
-    var s2 = Math.ceil(rem);
-    if(s2 <= 3 && ph.lastTick !== s2){ ph.lastTick = s2; play('tick'); }
   }
 
   draw(ph, rem);
 }
 
-function finish(prev){
+function finish(){
   play('end');
   running = false; if(timer) clearInterval(timer); timer = null;
   awake(false);
-  var r = $('run');
-  r.className = 'on done';
-  $('phase').textContent = 'FIN';
+  $('run').className = 'on done';
+  $('phase').textContent = 'Fin';
   $('rnd').textContent = cfg.rounds + (cfg.rounds === 1 ? ' asalto completado' : ' asaltos completados');
   $('clock').textContent = '✓';
   $('left').textContent = 'Buen trabajo.';
-  $('barf').style.width = '100%';
   markPips(0, true);
-  $('pause').textContent = 'PAUSA';
+  $('pause').textContent = 'Pausa';
 }
 
 function draw(ph, rem){
-  var r = $('run');
-  r.className = 'on ' + ph.type + (paused ? ' paused' : '');
-  var s = Math.max(0, Math.ceil(rem));
-  var m = Math.floor(s/60), ss = s%60;
+  $('run').className = 'on ' + ph.type + (paused ? ' paused' : '');
+  var s = Math.max(0, Math.ceil(rem)), m = Math.floor(s/60), ss = s%60;
   $('clock').textContent = m + ':' + (ss<10?'0':'') + ss;
-  $('phase').textContent = ph.type === 'work' ? 'ASALTO' : (ph.type === 'rest' ? 'DESCANSO' : 'PREPARA');
-  if(ph.type === 'work') $('rnd').textContent = ph.r + ' DE ' + cfg.rounds;
-  else if(ph.type === 'rest') $('rnd').textContent = 'SIGUE EL ASALTO ' + (ph.r+1) + ' DE ' + cfg.rounds;
+  $('phase').textContent = ph.type === 'work' ? 'Asalto' : (ph.type === 'rest' ? 'Descanso' : 'Prepara');
+  if(ph.type === 'work') $('rnd').textContent = ph.r + ' de ' + cfg.rounds;
+  else if(ph.type === 'rest') $('rnd').textContent = 'Sigue el asalto ' + (ph.r+1);
   else $('rnd').textContent = cfg.rounds + ' × ' + ms(cfg.work);
-  $('barf').style.width = (100*(1 - rem/ph.dur)).toFixed(1) + '%';
   markPips(ph.type === 'work' ? ph.r : (ph.type === 'rest' ? ph.r + 1 : 1), false);
-  var left = Math.max(0, Math.round(totalFrom(idx, rem)));
-  $('left').textContent = 'Quedan ' + ms(left) + ' de entrenamiento';
+  $('left').textContent = 'Quedan ' + ms(Math.max(0, Math.round(totalFrom(idx, rem)))) + ' de entrenamiento';
 }
 
 /* ================= eventos ================= */
 $('go').onclick = start;
 $('pause').onclick = function(e){ e.stopPropagation(); togglePause(); };
-$('skip').onclick = function(e){ e.stopPropagation(); skip(); };
-$('stop').onclick = function(e){ e.stopPropagation(); stop(); };
-$('mid').onclick = function(){ if(running) togglePause(); };
+$('skip').onclick  = function(e){ e.stopPropagation(); skip(); };
+$('stop').onclick  = function(e){ e.stopPropagation(); stop(); };
+$('mid').onclick   = function(){ if(running) togglePause(); };
 $('paused').onclick = function(){ togglePause(); };
 
 document.addEventListener('visibilitychange', function(){
@@ -506,21 +577,21 @@ document.addEventListener('visibilitychange', function(){
 });
 window.addEventListener('pagehide', function(){ awake(false); });
 
-// metadatos para "Añadir a pantalla de inicio"
+/* metadatos para "Añadir a pantalla de inicio" */
 (function(){
   function meta(n, c){ var m = document.createElement('meta'); m.name = n; m.content = c; document.head.appendChild(m); }
   meta('apple-mobile-web-app-capable', 'yes');
   meta('mobile-web-app-capable', 'yes');
   meta('apple-mobile-web-app-status-bar-style', 'black-translucent');
   meta('apple-mobile-web-app-title', 'Ring Timer');
-  meta('theme-color', '#0b0d10');
+  meta('theme-color', '#000000');
 })();
 
 /* ================= modo sin conexión ================= */
 function offlineMsg(state, txt){
-  var el = $('offline'); if(!el) return;
-  el.className = state;
-  el.lastElementChild.textContent = txt;
+  var e = $('offline'); if(!e) return;
+  e.className = state;
+  e.lastElementChild.textContent = txt;
 }
 (function(){
   if(!('serviceWorker' in navigator) || location.protocol === 'file:'){
@@ -530,7 +601,6 @@ function offlineMsg(state, txt){
   navigator.serviceWorker.register('sw.js').then(function(){
     return navigator.serviceWorker.ready;
   }).then(function(){
-    // Guardamos esta misma página para que arranque sin red desde la primera visita.
     var c = navigator.serviceWorker.controller;
     if(c) c.postMessage({ cache: location.href });
     offlineMsg('ok', 'Lista para funcionar sin cobertura');
@@ -541,9 +611,6 @@ function offlineMsg(state, txt){
 
 buildSounds();
 renderCfg();
-window.__ringtimer = { start:start, stop:stop, skip:skip, state:function(){
-  return { running:running, paused:paused, idx:idx, phase: seq[idx] && seq[idx].type, len: seq.length };
-}, setT0:function(d){ t0 -= d; } };
 })();
 </script>
 
