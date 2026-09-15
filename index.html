@@ -60,11 +60,14 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
   .sw[aria-pressed="true"]{background:var(--accent)}
   .sw[aria-pressed="true"]::after{transform:translateX(20px)}
 
-  .total{text-align:center;color:var(--dim);font-size:13px;margin:0 0 14px}
-  .total b{color:var(--txt);font-size:15px}
-  #go{display:block;width:100%;padding:18px;border-radius:16px;background:var(--work);
-      font-family:var(--display);font-size:28px;font-weight:400;letter-spacing:.14em}
+  #go{display:block;width:100%;padding:20px;border-radius:16px;background:var(--work);
+      font-family:var(--display);font-size:30px;font-weight:400;letter-spacing:.14em}
   #go:active{filter:brightness(.85)}
+  .summary{text-align:center;padding:18px 8px 20px;margin-bottom:18px}
+  #tot{font-family:var(--display);font-size:30px;line-height:1;text-transform:uppercase;
+       letter-spacing:.04em;color:var(--txt)}
+  #totsub{font-size:12.5px;color:var(--dim);font-weight:500;margin-top:8px;line-height:1.5}
+  .summary hr{border:0;border-top:1px solid var(--line);width:36px;margin:14px auto 0}
   .hint{color:var(--dim);font-size:12px;line-height:1.5;margin:18px 2px 0}
   .hint b{color:#e7ddd7}
   #offline{display:flex;align-items:center;gap:8px;margin:14px 2px 0;font-size:12px;
@@ -113,10 +116,16 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
     <div><h1>RING TIMER</h1><small>ENTRENAMIENTO DE BOXEO</small></div>
   </div>
 
+  <button id="go">EMPEZAR</button>
+
+  <div class="summary">
+    <div id="tot">—</div>
+    <div id="totsub">—</div>
+    <hr>
+  </div>
+
   <div class="card" id="cfg"></div>
 
-  <p class="total">Entrenamiento total: <b id="tot">—</b></p>
-  <button id="go">EMPEZAR</button>
   <p id="offline"><span></span><em style="font-style:normal">Preparando el modo sin conexión…</em></p>
 
   <p class="hint">
@@ -277,8 +286,9 @@ var TOGGLES = [
 
 function ms(s){ var m = Math.floor(s/60), r = s%60; return m + ':' + (r<10?'0':'') + r; }
 function hms(s){
-  var m = Math.floor(s/60), r = Math.round(s%60);
-  return m + ' min ' + (r ? r + ' s' : '');
+  var h = Math.floor(s/3600), m = Math.floor((s%3600)/60), r = Math.round(s%60);
+  if(h) return h + ' h ' + m + ' min';
+  return m + ' min' + (r ? ' ' + r + ' s' : '');
 }
 
 var $ = function(id){ return document.getElementById(id); };
@@ -318,7 +328,11 @@ function renderCfg(){
 }
 function total(){
   var t = cfg.prep + cfg.rounds*cfg.work + Math.max(0, cfg.rounds-1)*cfg.rest;
-  $('tot').textContent = hms(t) + ' · ' + cfg.rounds + ' × ' + ms(cfg.work);
+  $('tot').textContent = hms(t);
+  var p = [cfg.rounds + (cfg.rounds === 1 ? ' asalto de ' : ' asaltos de ') + ms(cfg.work)];
+  if(cfg.rest > 0) p.push('descanso ' + ms(cfg.rest));
+  if(cfg.prep > 0) p.push('preparación ' + ms(cfg.prep));
+  $('totsub').textContent = p.join(' · ');
 }
 
 /* ================= motor del temporizador ================= */
