@@ -133,14 +133,31 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
      vista el que manda siga siendo el de en medio. */
   #hora,#restante{
     font-family:var(--timer);font-weight:600;
-    font-size:clamp(20px, min(9.5vw,10vh), 46px);
-    line-height:1.08;letter-spacing:.4px;white-space:nowrap;
+    /* Manda el alto tanto como el ancho: con el móvil tumbado
+       sobran píxeles a lo ancho y faltan a lo alto, y si sólo se
+       mirase el ancho estas dos líneas se comerían el contador. */
+    font-size:clamp(28px, min(19vw,11vh), 88px);
+    line-height:1.05;letter-spacing:.4px;white-space:nowrap;
     font-variant-numeric:tabular-nums;opacity:.72;
   }
-  #hora{margin-bottom:2px}
-  #restante{margin-top:2px}
-  #restante small{font-size:.5em;font-weight:600;opacity:.8;letter-spacing:1px;
-                  text-transform:uppercase;display:block;margin-top:1px}
+  /* El aire de alrededor no es decoración: sin él la hora se pega
+     al contador y, con los dos en la misma tipografía y tamaños
+     parecidos, se leen como un solo bloque de cifras. Separados,
+     la hora cae a media altura entre el número de asalto y el
+     contador, que es donde el ojo la busca. */
+  #hora{margin-bottom:clamp(16px, 12.5vh, 120px)}
+  #restante{margin-top:clamp(12px, 6vh, 60px)}
+  #restante small{font-size:.32em;font-weight:600;opacity:.8;letter-spacing:1.5px;
+                  text-transform:uppercase;display:block;margin-top:2px}
+
+  /* Pantalla baja (el móvil tumbado): el que tiene que seguir
+     mandando es el contador, así que aquí los satélites se
+     encogen en vez de robarle el sitio. */
+  @media (max-height: 520px){
+    #hora,#restante{font-size:clamp(20px, 7.5vh, 40px)}
+    #hora{margin-bottom:clamp(8px, 4vh, 26px)}
+    #restante{margin-top:clamp(6px, 3vh, 20px)}
+  }
   #run.done #hora,#run.done #restante{opacity:.85}
 
   #bottom{position:relative;z-index:2;flex:0 0 auto;
@@ -524,6 +541,13 @@ async function awake(on){
 }
 
 /* ajusta el reloj al ancho real de la pantalla y de la tipografía disponible */
+/** Lo que ocupa un elemento de verdad: su alto más sus márgenes. */
+function conMargenes(el){
+  var cs = getComputedStyle(el);
+  return el.getBoundingClientRect().height +
+         (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
+}
+
 function fitClock(){
   var c = $('clock'), mid = $('mid');
   if(!mid.clientWidth) return;
@@ -532,7 +556,7 @@ function fitClock(){
   // líneas de alrededor. Medirlo así en vez de fijar un tamaño es lo
   // que deja que el contador siga siendo el más grande que quepa,
   // tanto en un iPhone pequeño como en horizontal.
-  var alto = mid.clientHeight - $('hora').offsetHeight - $('restante').offsetHeight - 8;
+  var alto = mid.clientHeight - conMargenes($('hora')) - conMargenes($('restante')) - 6;
   if(alto < 40) alto = mid.clientHeight * .6;
 
   var keep = c.textContent;
