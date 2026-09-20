@@ -735,8 +735,16 @@ var SP_TOKEN    = 'https://accounts.spotify.com/api/token';
 var SP_API      = 'https://api.spotify.com/v1';
 var SP_PERMISOS = 'user-read-playback-state user-read-currently-playing user-modify-playback-state';
 
+/* El Client ID de la app registrada en el panel de Spotify. NO es
+   un secreto: en PKCE viaja en la propia URL de autorización y va
+   a la vista en el código de cualquier web que use Spotify. El que
+   sí sería secreto —el Client Secret— este flujo ni lo usa. Con
+   sólo esto nadie puede tocar la cuenta: hay que entrar con la
+   contraseña de Spotify, y la vuelta está atada a esta dirección. */
+var SP_ID_POR_DEFECTO = '24c055f8b7744f1481e2376d382357ad';
+
 var sp = {
-  id: localStorage.getItem('rt.sp.id') || '',
+  id: localStorage.getItem('rt.sp.id') || SP_ID_POR_DEFECTO,
   tok: localStorage.getItem('rt.sp.tok') || '',
   ref: localStorage.getItem('rt.sp.ref') || '',
   exp: Number(localStorage.getItem('rt.sp.exp') || 0),
@@ -757,9 +765,15 @@ function spOlvida(){
 }
 function spConectado(){ return !!sp.tok || !!sp.ref; }
 
-/** La dirección de vuelta: esta misma página, sin parámetros. */
+/**
+ * La dirección de vuelta. Spotify la compara letra por letra con
+ * la que está registrada, así que tiene que salir idéntica se
+ * abra la app como se abra: desde la pantalla de inicio la ruta
+ * es «/ring-timer/», pero escribiéndola a mano puede acabar en
+ * «/ring-timer/index.html». Se normaliza quitando el index.html.
+ */
 function spRedir(){
-  return location.origin + location.pathname;
+  return location.origin + location.pathname.replace(/index\.html$/, '');
 }
 
 /* ---------- PKCE ---------- */
