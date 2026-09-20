@@ -1,5 +1,5 @@
 /* Ring Timer — service worker: deja la app utilizable sin cobertura. */
-var CACHE = 'ringtimer-v2';
+var CACHE = 'ringtimer-v3';
 
 self.addEventListener('install', function(e){
   e.waitUntil(
@@ -37,6 +37,15 @@ self.addEventListener('message', function(e){
 self.addEventListener('fetch', function(e){
   var req = e.request;
   if(req.method !== 'GET') return;
+
+  /* Sólo lo de esta app. Sin esta línea se cachearía también la
+     API de Spotify, y como esto es «cache primero», la canción que
+     sonase la primera vez se quedaría clavada para siempre: la app
+     preguntaría qué suena y el propio service worker le devolvería
+     la respuesta vieja sin llegar a preguntar. */
+  var url;
+  try{ url = new URL(req.url); }catch(err){ return; }
+  if(url.origin !== self.location.origin) return;
 
   e.respondWith(
     caches.match(req, {ignoreSearch:true}).then(function(hit){

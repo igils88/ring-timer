@@ -160,6 +160,23 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
           text-transform:uppercase}
   #run.paused #paused{display:flex}
   video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+
+  /* ---------- barra de Spotify ---------- */
+  /* Vive dentro de #bottom, que ya está por encima de la capa de
+     pausa: así los botones se pueden tocar sin que el toque llegue
+     al centro de la pantalla y pare el asalto sin querer. */
+  #sp{display:none;align-items:center;gap:10px;margin-bottom:12px;
+      background:rgba(0,0,0,.22);border-radius:14px;padding:8px 10px}
+  #sp.on{display:flex}
+  #sp-txt{flex:1;min-width:0}
+  #sp-tit{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;
+          text-overflow:ellipsis;line-height:1.25}
+  #sp-art{font-size:12.5px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #sp button{flex:0 0 auto;width:44px;height:44px;border-radius:12px;
+             background:rgba(255,255,255,.16);font-size:17px;line-height:1;
+             display:flex;align-items:center;justify-content:center}
+  #sp button:active{background:rgba(255,255,255,.3)}
+  #sp svg{width:20px;height:20px;fill:currentColor}
 </style>
 
 
@@ -181,6 +198,15 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
   <div id="cfg"></div>
 
   <p id="offline"><span></span><em style="font-style:normal">Preparando el modo sin conexión…</em></p>
+
+  <div class="sect" id="spotify-cfg">
+    <h2>Spotify</h2>
+    <div class="group" id="sp-panel"></div>
+    <p>
+      Para saltar de canción hace falta Spotify Premium; ver el título, no.
+      Nada de esto sale del móvil: la sesión se guarda aquí y sólo habla con Spotify.
+    </p>
+  </div>
 
   <div class="sect">
     <h2>Cómo usarla</h2>
@@ -209,6 +235,21 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
     <div id="restante">&nbsp;</div>
   </div>
   <div id="bottom">
+    <div id="sp">
+      <button id="sp-prev" aria-label="Canción anterior">
+        <svg viewBox="0 0 24 24"><path d="M6 6h2.5v12H6zM20 6v12L10.5 12z"/></svg>
+      </button>
+      <div id="sp-txt">
+        <div id="sp-tit">—</div>
+        <div id="sp-art"></div>
+      </div>
+      <button id="sp-play" aria-label="Reproducir o pausar">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button id="sp-next" aria-label="Siguiente canción">
+        <svg viewBox="0 0 24 24"><path d="M15.5 6H18v12h-2.5zM4 6v12l9.5-6z"/></svg>
+      </button>
+    </div>
     <div id="pips"></div>
     <div id="left"></div>
     <div class="ctrls">
@@ -528,10 +569,12 @@ function start(){
   timer = setInterval(tick, 120);
   tick();
   fitClock();
+  spVigila(true);
 }
 function stop(){
   running = false; if(timer) clearInterval(timer); timer = null;
   awake(false);
+  spVigila(false);
   $('run').classList.remove('on','paused');
   $('pause').textContent = 'Pausa';
   try{ $('setup').scrollIntoView(); }catch(e){}
@@ -629,6 +672,7 @@ $('paused').onclick = function(){ togglePause(); };
 document.addEventListener('visibilitychange', function(){
   if(document.visibilityState === 'visible'){
     if(running && !paused) awake(true);
+    if(running) spMira();
     tick();
   }
 });
@@ -668,6 +712,260 @@ function offlineMsg(state, txt){
 
 buildSounds();
 renderCfg();
+
+/* ============================================================
+   Spotify
+   ------------------------------------------------------------
+   Sirve para dos cosas y ninguna más: ver qué suena y cambiar de
+   canción sin salir del temporizador. Entre asalto y asalto no se
+   tiene ni tiempo ni ganas de buscar la app.
+
+   Cómo entra: «Authorization Code with PKCE». Es el flujo pensado
+   para apps sin servidor — no hay client secret que esconder,
+   porque no lo usa. Lo único que se guarda aquí es el Client ID
+   (que es público por diseño) y los tokens del propio móvil.
+
+   Lo que suena NO lo reproduce esta app: manda sobre el Spotify
+   que ya esté sonando en el móvil, igual que haría el mando del
+   coche. Por eso hay que abrir Spotify y darle al play antes.
+   ============================================================ */
+
+var SP_AUTORIZA = 'https://accounts.spotify.com/authorize';
+var SP_TOKEN    = 'https://accounts.spotify.com/api/token';
+var SP_API      = 'https://api.spotify.com/v1';
+var SP_PERMISOS = 'user-read-playback-state user-read-currently-playing user-modify-playback-state';
+
+var sp = {
+  id: localStorage.getItem('rt.sp.id') || '',
+  tok: localStorage.getItem('rt.sp.tok') || '',
+  ref: localStorage.getItem('rt.sp.ref') || '',
+  exp: Number(localStorage.getItem('rt.sp.exp') || 0),
+  sonando: null,
+  timer: null,
+  aviso: '',
+};
+
+function spGuarda(){
+  localStorage.setItem('rt.sp.id', sp.id);
+  localStorage.setItem('rt.sp.tok', sp.tok);
+  localStorage.setItem('rt.sp.ref', sp.ref);
+  localStorage.setItem('rt.sp.exp', String(sp.exp));
+}
+function spOlvida(){
+  sp.tok = ''; sp.ref = ''; sp.exp = 0; sp.sonando = null; sp.aviso = '';
+  spGuarda(); spPinta(); spBarra();
+}
+function spConectado(){ return !!sp.tok || !!sp.ref; }
+
+/** La dirección de vuelta: esta misma página, sin parámetros. */
+function spRedir(){
+  return location.origin + location.pathname;
+}
+
+/* ---------- PKCE ---------- */
+function spAleatorio(n){
+  var a = new Uint8Array(n); crypto.getRandomValues(a);
+  var abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  return Array.from(a).map(function(x){ return abc[x % abc.length]; }).join('');
+}
+async function spReto(verificador){
+  var datos = new TextEncoder().encode(verificador);
+  var hash = await crypto.subtle.digest('SHA-256', datos);
+  var b = String.fromCharCode.apply(null, new Uint8Array(hash));
+  return btoa(b).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+async function spEntrar(){
+  if(!sp.id){ sp.aviso = 'Falta el Client ID.'; spPinta(); return; }
+  var verificador = spAleatorio(64);
+  sessionStorage.setItem('rt.sp.ver', verificador);
+  var url = SP_AUTORIZA +
+    '?client_id=' + encodeURIComponent(sp.id) +
+    '&response_type=code' +
+    '&redirect_uri=' + encodeURIComponent(spRedir()) +
+    '&code_challenge_method=S256' +
+    '&code_challenge=' + (await spReto(verificador)) +
+    '&scope=' + encodeURIComponent(SP_PERMISOS);
+  location.href = url;
+}
+
+/** Al volver de Spotify, la página trae un ?code= que se canjea. */
+async function spVuelta(){
+  var par = new URLSearchParams(location.search);
+  var code = par.get('code'), err = par.get('error');
+  if(!code && !err) return;
+
+  history.replaceState({}, '', spRedir());          // limpia la barra de direcciones
+  if(err){ sp.aviso = 'Spotify no ha dado permiso (' + err + ').'; spPinta(); return; }
+
+  var ver = sessionStorage.getItem('rt.sp.ver') || '';
+  sessionStorage.removeItem('rt.sp.ver');
+  if(!ver){ sp.aviso = 'Se perdió el hilo de la conexión. Prueba otra vez.'; spPinta(); return; }
+
+  await spPideToken({
+    grant_type: 'authorization_code',
+    code: code,
+    redirect_uri: spRedir(),
+    code_verifier: ver,
+  });
+}
+
+async function spPideToken(campos){
+  campos.client_id = sp.id;
+  try{
+    var r = await fetch(SP_TOKEN, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(campos).toString(),
+    });
+    var j = await r.json();
+    if(!r.ok || !j.access_token){
+      // Un refresco caducado no es un error que contar: se pide
+      // entrar otra vez y ya está.
+      sp.aviso = j.error_description || j.error || 'Spotify ha rechazado la conexión.';
+      sp.tok = ''; sp.exp = 0;
+      if(campos.grant_type === 'refresh_token') sp.ref = '';
+      spGuarda(); spPinta();
+      return false;
+    }
+    sp.tok = j.access_token;
+    if(j.refresh_token) sp.ref = j.refresh_token;
+    sp.exp = Date.now() + (Number(j.expires_in || 3600) - 60) * 1000;
+    sp.aviso = '';
+    spGuarda(); spPinta();
+    return true;
+  }catch(e){
+    sp.aviso = 'Sin conexión con Spotify.';
+    spPinta();
+    return false;
+  }
+}
+
+async function spToken(){
+  if(sp.tok && Date.now() < sp.exp) return sp.tok;
+  if(!sp.ref) return '';
+  var ok = await spPideToken({ grant_type: 'refresh_token', refresh_token: sp.ref });
+  return ok ? sp.tok : '';
+}
+
+/** Una llamada a la API con el token al día. */
+async function spApi(ruta, metodo){
+  var t = await spToken();
+  if(!t) return null;
+  try{
+    var r = await fetch(SP_API + ruta, {
+      method: metodo || 'GET',
+      headers: { Authorization: 'Bearer ' + t },
+    });
+    if(r.status === 401){ sp.tok = ''; sp.exp = 0; spGuarda(); return null; }
+    if(r.status === 403){ sp.aviso = 'Eso necesita Spotify Premium.'; spPinta(); return null; }
+    if(r.status === 204) return { vacio: true };        // no hay nada sonando
+    if(!r.ok) return null;
+    var txt = await r.text();
+    return txt ? JSON.parse(txt) : { vacio: true };
+  }catch(e){ return null; }
+}
+
+async function spMira(){
+  if(!spConectado()) return;
+  var d = await spApi('/me/player/currently-playing');
+  if(!d || d.vacio || !d.item){ sp.sonando = null; spBarra(); return; }
+  sp.sonando = {
+    titulo: d.item.name || '',
+    artista: (d.item.artists || []).map(function(a){ return a.name; }).join(', '),
+    suena: !!d.is_playing,
+  };
+  spBarra();
+}
+
+async function spManda(accion){
+  if(accion === 'next' || accion === 'previous'){
+    await spApi('/me/player/' + accion, 'POST');
+  }else{
+    var suena = sp.sonando && sp.sonando.suena;
+    await spApi('/me/player/' + (suena ? 'pause' : 'play'), 'PUT');
+    if(sp.sonando) sp.sonando.suena = !suena;
+    spBarra();
+  }
+  // Spotify tarda un pelín en reflejar el cambio.
+  setTimeout(spMira, 450);
+}
+
+/* ---------- pintar ---------- */
+
+function spBarra(){
+  var caja = $('sp');
+  var hay = spConectado() && sp.sonando;
+  caja.classList.toggle('on', !!hay);
+  if(!hay) return;
+  $('sp-tit').textContent = sp.sonando.titulo || '—';
+  $('sp-art').textContent = sp.sonando.artista || '';
+  $('sp-play').innerHTML = sp.sonando.suena
+    ? '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>'
+    : '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+}
+
+function spPinta(){
+  var p = $('sp-panel');
+  if(!p) return;
+
+  if(!spConectado()){
+    p.innerHTML =
+      '<div class="row"><div class="name">' +
+        '<b style="font-weight:600">Client ID</b>' +
+        '<div style="font-size:13px;color:var(--label2);line-height:1.4;margin-top:2px">' +
+          'Créalo en developer.spotify.com → Create app, con esta dirección de vuelta:<br>' +
+          '<span style="word-break:break-all;color:var(--label)">' + spRedir() + '</span>' +
+        '</div>' +
+      '</div></div>' +
+      '<div class="row"><input id="sp-id" type="text" inputmode="latin" autocomplete="off" ' +
+        'autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="pega aquí el Client ID" ' +
+        'value="' + (sp.id || '') + '" ' +
+        'style="flex:1;min-width:0;background:transparent;border:0;outline:none;color:var(--label);' +
+        'font-size:16px;font-family:inherit"></div>' +
+      '<div class="row" style="justify-content:center"><button id="sp-go" ' +
+        'style="font-weight:600;color:var(--accent)">Conectar con Spotify</button></div>' +
+      (sp.aviso ? '<div class="row"><div class="name" style="font-size:13px;color:var(--accent)">' +
+        sp.aviso + '</div></div>' : '');
+
+    $('sp-id').addEventListener('input', function(){
+      sp.id = this.value.trim(); spGuarda();
+    });
+    $('sp-go').addEventListener('click', spEntrar);
+    return;
+  }
+
+  p.innerHTML =
+    '<div class="row"><div class="name"><b style="font-weight:600">Conectado</b>' +
+      '<div style="font-size:13px;color:var(--label2);margin-top:2px">' +
+        'Durante el entrenamiento verás qué suena y podrás cambiar de canción.' +
+      '</div></div></div>' +
+    (sp.aviso ? '<div class="row"><div class="name" style="font-size:13px;color:var(--accent)">' +
+      sp.aviso + '</div></div>' : '') +
+    '<div class="row" style="justify-content:center"><button id="sp-out" ' +
+      'style="font-weight:600;color:var(--accent)">Desconectar</button></div>';
+
+  $('sp-out').addEventListener('click', spOlvida);
+}
+
+/** Mientras el temporizador corre, se pregunta cada pocos segundos. */
+function spVigila(on){
+  if(sp.timer){ clearInterval(sp.timer); sp.timer = null; }
+  if(!on || !spConectado()) return;
+  spMira();
+  sp.timer = setInterval(function(){
+    if(document.visibilityState === 'visible') spMira();
+  }, 5000);
+}
+
+$('sp-prev').onclick = function(e){ e.stopPropagation(); spManda('previous'); };
+$('sp-next').onclick = function(e){ e.stopPropagation(); spManda('next'); };
+$('sp-play').onclick = function(e){ e.stopPropagation(); spManda('play'); };
+$('sp').onclick = function(e){ e.stopPropagation(); };
+
+spPinta();
+spVuelta();
+
 })();
 </script>
 
