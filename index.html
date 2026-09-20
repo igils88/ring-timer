@@ -36,6 +36,15 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
     --ok:#30D158;          /* systemGreen */
     --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     --round:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    /* El contador no usa la tipografía del sistema: quiere leerse
+       como un marcador, no como una app. DIN Condensed es la que
+       llevan los cronómetros y los dorsales, viene con iOS y no hay
+       que descargar nada — importante en una app que tiene que
+       arrancar sin cobertura en un gimnasio. Detrás, lo más
+       parecido que haya en cada sistema. */
+    --timer:"DIN Condensed","DIN Alternate","Oswald","Roboto Condensed",
+            "Archivo Narrow","Liberation Sans Narrow","Arial Narrow",
+            ui-sans-serif,system-ui,sans-serif;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{
@@ -112,9 +121,27 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
   #phase{font-size:15px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;opacity:.75}
   #rnd{font-size:22px;font-weight:600;margin-top:5px;letter-spacing:.2px}
 
-  #mid{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden}
-  #clock{font-family:var(--round);font-weight:600;font-size:min(40vw,44vh);line-height:.95;
-         white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+  #mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+       min-height:0;overflow:hidden;padding:2px 12px}
+  #clockbox{display:flex;align-items:center;justify-content:center;min-height:0;width:100%}
+  #clock{font-family:var(--timer);font-weight:700;font-size:min(40vw,44vh);line-height:.92;
+         white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:0}
+
+  /* Los dos satélites del contador. Grandes de verdad: se miran
+     desde el otro lado del saco, de reojo y sudando. Pero con
+     menos peso y algo de transparencia, para que a un golpe de
+     vista el que manda siga siendo el de en medio. */
+  #hora,#restante{
+    font-family:var(--timer);font-weight:600;
+    font-size:clamp(20px, min(9.5vw,10vh), 46px);
+    line-height:1.08;letter-spacing:.4px;white-space:nowrap;
+    font-variant-numeric:tabular-nums;opacity:.72;
+  }
+  #hora{margin-bottom:2px}
+  #restante{margin-top:2px}
+  #restante small{font-size:.5em;font-weight:600;opacity:.8;letter-spacing:1px;
+                  text-transform:uppercase;display:block;margin-top:1px}
+  #run.done #hora,#run.done #restante{opacity:.85}
 
   #bottom{position:relative;z-index:2;flex:0 0 auto;
           padding:0 20px calc(20px + env(safe-area-inset-bottom,0px))}
@@ -123,6 +150,7 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
   #pips i.done{background:rgba(255,255,255,.9)}
   #pips i.now{background:#fff;height:7px;margin-top:-1.5px}
   #left{font-size:13px;opacity:.7;margin-bottom:16px;text-align:center;font-variant-numeric:tabular-nums}
+  #left:empty{display:none}
   .ctrls{display:flex;gap:10px}
   .ctrls button{flex:1;height:50px;border-radius:12px;background:rgba(255,255,255,.18);
                 font-size:16px;font-weight:600;letter-spacing:.2px}
@@ -175,7 +203,11 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
 
 <div id="run">
   <div id="top"><div id="phase">Prepara</div><div id="rnd"></div></div>
-  <div id="mid"><div id="clock">0:00</div></div>
+  <div id="mid">
+    <div id="hora">--:--</div>
+    <div id="clockbox"><div id="clock">0:00</div></div>
+    <div id="restante">&nbsp;</div>
+  </div>
   <div id="bottom">
     <div id="pips"></div>
     <div id="left"></div>
@@ -432,6 +464,13 @@ function totalFrom(i, rem){
   return t;
 }
 
+/** Lo que dura el entrenamiento entero, para el resumen del final. */
+function totalAll(){
+  var t = 0;
+  for(var j=0;j<seq.length;j++) t += seq[j].dur;
+  return Math.round(t);
+}
+
 async function awake(on){
   var v = $('nosleep');
   if(on){
@@ -447,12 +486,20 @@ async function awake(on){
 function fitClock(){
   var c = $('clock'), mid = $('mid');
   if(!mid.clientWidth) return;
+
+  // El alto que le queda al contador es el del centro MENOS las dos
+  // líneas de alrededor. Medirlo así en vez de fijar un tamaño es lo
+  // que deja que el contador siga siendo el más grande que quepa,
+  // tanto en un iPhone pequeño como en horizontal.
+  var alto = mid.clientHeight - $('hora').offsetHeight - $('restante').offsetHeight - 8;
+  if(alto < 40) alto = mid.clientHeight * .6;
+
   var keep = c.textContent;
   c.style.fontSize = '';
   c.textContent = ms(Math.max(cfg.work, cfg.rest, cfg.prep, 60));
   var base = parseFloat(getComputedStyle(c).fontSize), w = c.scrollWidth, h = c.scrollHeight;
   if(w > 0 && h > 0){
-    var k = Math.min(mid.clientWidth*.94/w, mid.clientHeight*.96/h);
+    var k = Math.min(mid.clientWidth*.94/w, alto*.98/h);
     c.style.fontSize = (base*k).toFixed(1) + 'px';
   }
   c.textContent = keep;
@@ -476,11 +523,11 @@ function start(){
   idx = 0; t0 = Date.now(); running = true; paused = false;
   if(seq[0].type === 'work') play('start');
   $('run').classList.add('on');
-  fitClock();
   awake(true);
   if(timer) clearInterval(timer);
   timer = setInterval(tick, 120);
   tick();
+  fitClock();
 }
 function stop(){
   running = false; if(timer) clearInterval(timer); timer = null;
@@ -544,9 +591,16 @@ function finish(){
   $('phase').textContent = 'Fin';
   $('rnd').textContent = cfg.rounds + (cfg.rounds === 1 ? ' asalto completado' : ' asaltos completados');
   $('clock').textContent = '✓';
-  $('left').textContent = 'Buen trabajo.';
+  $('hora').textContent = horaAhora();
+  $('restante').innerHTML = 'Buen trabajo<small>' + ms(totalAll()) + ' de entrenamiento</small>';
+  $('left').textContent = '';
   markPips(0, true);
   $('pause').textContent = 'Pausa';
+}
+
+function horaAhora(){
+  var d = new Date();
+  return d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
 }
 
 function draw(ph, rem){
@@ -558,7 +612,10 @@ function draw(ph, rem){
   else if(ph.type === 'rest') $('rnd').textContent = 'Sigue el asalto ' + (ph.r+1);
   else $('rnd').textContent = cfg.rounds + ' × ' + ms(cfg.work);
   markPips(ph.type === 'work' ? ph.r : (ph.type === 'rest' ? ph.r + 1 : 1), false);
-  $('left').textContent = 'Quedan ' + ms(Math.max(0, Math.round(totalFrom(idx, rem)))) + ' de entrenamiento';
+  $('hora').textContent = horaAhora();
+  $('restante').innerHTML = ms(Math.max(0, Math.round(totalFrom(idx, rem)))) +
+                            '<small>restante</small>';
+  $('left').textContent = '';
 }
 
 /* ================= eventos ================= */

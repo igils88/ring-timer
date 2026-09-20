@@ -1,5 +1,5 @@
 /* Ring Timer — service worker: deja la app utilizable sin cobertura. */
-var CACHE = 'ringtimer-v1';
+var CACHE = 'ringtimer-v2';
 
 self.addEventListener('install', function(e){
   e.waitUntil(
